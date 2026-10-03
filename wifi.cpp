@@ -5,6 +5,7 @@
 #include <Preferences.h>
 #include <LiquidCrystal_I2C.h>
 #include "wifi_module.h"
+#include "spiffs.h"
 
 extern LiquidCrystal_I2C lcd;
 
@@ -31,7 +32,7 @@ static const char* PREFS_NAMESPACE = "netconfig";
 // Default Fallback
 static const char* DEFAULT_SSID = "Almahfudzy";
 static const char* DEFAULT_PASS = "nuri12345";
-static const char* DEFAULT_SERVER = "http://192.168.233.195:8000";
+static const char* DEFAULT_SERVER = "https://presensi-ubudiyah.ghaibnet.co.id";
 
 // =====================================================
 // FUNGSI BACA PENGATURAN TERSIMPAN DARI NVS
@@ -61,25 +62,39 @@ String getSavedServerHost()
     prefs.begin(PREFS_NAMESPACE, true);
     String host = prefs.getString("server", DEFAULT_SERVER);
     prefs.end();
+
+    host.trim();
+    while (host.endsWith("/")) {
+        host = host.substring(0, host.length() - 1);
+    }
     return host;
 }
 
 String getSavedServerUrl()
 {
     String host = getSavedServerHost();
-    if (!host.endsWith("/")) {
-        return host + "/api/rfid/scan";
-    }
-    return host + "api/rfid/scan";
+    return host + "/api/rfid/scan";
 }
 
 String getSavedServerSyncUrl()
 {
     String host = getSavedServerHost();
-    if (!host.endsWith("/")) {
-        return host + "/api/rfid/sync";
-    }
-    return host + "api/rfid/sync";
+    return host + "/api/rfid/sync";
+}
+
+void resetSemuaPengaturanNVS()
+{
+    Preferences prefs;
+    prefs.begin(PREFS_NAMESPACE, false);
+    prefs.clear();
+    prefs.end();
+
+    hapusSemuaDataOffline();
+    Serial.println();
+    Serial.println("================================");
+    Serial.println("[RESET] NVS & DATA OFFLINE BERSIH");
+    Serial.println("Default Server: " + String(DEFAULT_SERVER));
+    Serial.println("================================");
 }
 
 // =====================================================
@@ -147,8 +162,8 @@ static String getPortalHtml()
             <label>Alamat Server Laravel (URL / IP):</label>
             <input type="text" name="server" value=")rawliteral";
     html += currentServer;
-    html += R"rawliteral(" required placeholder="http://192.168.x.x:8000">
-            <div class="hint">Contoh: http://192.168.233.195:8000</div>
+    html += R"rawliteral(" required placeholder="https://presensi-ubudiyah.ghaibnet.co.id">
+            <div class="hint">Contoh: https://presensi-ubudiyah.ghaibnet.co.id</div>
 
             <button type="submit">💾 Simpan & Sambungkan</button>
         </form>
@@ -208,6 +223,13 @@ static void setupServerRoutes()
         lcd.print("Me-restart...");
 
         delay(2000);
+        ESP.restart();
+    });
+
+    server.on("/reset", HTTP_GET, []() {
+        resetSemuaPengaturanNVS();
+        server.send(200, "text/html", "<!DOCTYPE html><html><body style='font-family:sans-serif;text-align:center;padding:40px;background:#fef2f2;color:#991b1b;'><h2>🔄 Reset Berhasil!</h2><p>Pengaturan NVS telah dikembalikan ke default. Me-restart ESP32...</p></body></html>");
+        delay(1500);
         ESP.restart();
     });
 

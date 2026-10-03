@@ -22,4 +22,7 @@ String getSavedServerHost();
 String getSavedServerUrl();
 String getSavedServerSyncUrl();
 
+// Reset seluruh pengaturan NVS ke default bawaan
+void resetSemuaPengaturanNVS();
+
 #endif
