@@ -16,6 +16,7 @@ struct HasilAbsensi
     String status;
     String jam;
     String message;
+    String action;
 };
 
 // =====================================================

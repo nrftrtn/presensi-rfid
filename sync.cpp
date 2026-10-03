@@ -3,6 +3,8 @@
 #include "wifi_module.h"
 #include "laravel.h"
 #include "spiffs.h"
+#include "waktu.h"
+#include "tampilan.h"
 
 // =====================================================
 // STATUS SINKRONISASI
@@ -155,7 +157,7 @@ void syncOfflineData()
             );
 
         // =============================================
-        // AMBIL TANGGAL
+        // AMBIL TANGGAL DAN JAM
         // =============================================
 
         String tanggal =
@@ -164,14 +166,31 @@ void syncOfflineData()
                 pemisahKedua
             );
 
-        // =============================================
-        // AMBIL JAM
-        // =============================================
-
         String jam =
             dataOffline.substring(
                 pemisahKedua + 1
             );
+
+        // Jika tanggal/jam belum tersinkron saat tersimpan (0000-00-00),
+        // gunakan waktu NTP saat ini jika sudah tersedia
+        if (tanggal == "0000-00-00" || tanggal == "" || jam == "00:00:00" || jam == "")
+        {
+            String nowTgl = getTanggal();
+            String nowJam = getJam();
+
+            if (nowTgl != "0000-00-00" && nowTgl != "")
+            {
+                Serial.println("Memperbaiki tanggal offline dengan waktu sekarang...");
+                tanggal = nowTgl;
+                jam     = nowJam;
+            }
+            else
+            {
+                Serial.println("Data offline tanggal tidak valid dan NTP belum siap. Dihapus.");
+                hapusDataOffline(index);
+                continue;
+            }
+        }
 
         // =============================================
         // TAMPILKAN DATA

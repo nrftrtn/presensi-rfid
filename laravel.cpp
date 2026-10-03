@@ -97,6 +97,10 @@ HasilAbsensi kirimAbsensiKeLaravel(String uid)
         "Content-Type",
         "application/json"
     );
+    http.addHeader(
+        "Accept",
+        "application/json"
+    );
 
     http.setTimeout(5000);
 
@@ -181,24 +185,26 @@ HasilAbsensi kirimAbsensiKeLaravel(String uid)
     hasil.message =
         doc["message"] | "";
 
-    // =================================================
-    // ABSENSI BERHASIL
-    // =================================================
+    hasil.action =
+        doc["action"] | "";
+
+    hasil.nama =
+        doc["nama"] | "";
+
+    hasil.kegiatan =
+        doc["kegiatan"] | "";
+
+    hasil.status =
+        doc["status_kehadiran"] | "";
+
+    if (doc.containsKey("jam_masuk") && !doc["jam_masuk"].isNull()) {
+        hasil.jam = doc["jam_masuk"].as<String>();
+    } else if (doc.containsKey("jam") && !doc["jam"].isNull()) {
+        hasil.jam = doc["jam"].as<String>();
+    }
 
     if (hasil.berhasil)
     {
-        hasil.nama =
-            doc["nama"] | "";
-
-        hasil.kegiatan =
-            doc["kegiatan"] | "";
-
-        hasil.status =
-            doc["status_kehadiran"] | "";
-
-        hasil.jam =
-            doc["jam"] | "";
-
         Serial.println();
         Serial.println("ABSENSI BERHASIL");
 
@@ -214,18 +220,18 @@ HasilAbsensi kirimAbsensiKeLaravel(String uid)
         Serial.print("Jam      : ");
         Serial.println(hasil.jam);
     }
-
-    // =================================================
-    // ABSENSI DITOLAK
-    // =================================================
-
     else
     {
         Serial.println();
         Serial.println("ABSENSI DITOLAK");
 
-        Serial.print("Pesan : ");
+        Serial.print("Pesan    : ");
         Serial.println(hasil.message);
+
+        if (hasil.nama.length() > 0) {
+            Serial.print("Nama     : ");
+            Serial.println(hasil.nama);
+        }
     }
 
     http.end();
@@ -305,6 +311,10 @@ bool kirimDataOfflineKeLaravel(
 
     http.addHeader(
         "Content-Type",
+        "application/json"
+    );
+    http.addHeader(
+        "Accept",
         "application/json"
     );
 

@@ -4,99 +4,7 @@
 #include "spiffs.h"
 #include "sync.h"
 #include "waktu.h"
-
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-
-
-// =====================================================
-// PIN INDIKATOR
-// =====================================================
-
-#define LED_HIJAU 26
-#define LED_MERAH 27
-#define BUZZER    25
-
-
-// =====================================================
-// LCD
-// =====================================================
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-
-// =====================================================
-// FUNGSI LCD - TAMPILAN AWAL
-// =====================================================
-
-void tampilkanAwal()
-{
-    lcd.clear();
-
-    lcd.setCursor(0, 0);
-    lcd.print("Tempel Gelang");
-
-    lcd.setCursor(0, 1);
-    if (isWiFiConnected())
-    {
-        lcd.print(getLocalIPString());
-    }
-    else
-    {
-        lcd.print("RFID (OFFLINE)");
-    }
-}
-
-
-// =====================================================
-// BUZZER
-// =====================================================
-
-void bunyiBuzzer(int durasi)
-{
-    digitalWrite(BUZZER, HIGH);
-
-    delay(durasi);
-
-    digitalWrite(BUZZER, LOW);
-}
-
-
-// =====================================================
-// INDIKATOR BERHASIL
-// =====================================================
-
-void indikatorBerhasil()
-{
-    digitalWrite(LED_MERAH, LOW);
-
-    digitalWrite(LED_HIJAU, HIGH);
-
-    bunyiBuzzer(250);
-
-    delay(1500);
-
-    digitalWrite(LED_HIJAU, LOW);
-}
-
-
-// =====================================================
-// INDIKATOR GAGAL
-// =====================================================
-
-void indikatorGagal()
-{
-    digitalWrite(LED_HIJAU, LOW);
-
-    digitalWrite(LED_MERAH, HIGH);
-
-    bunyiBuzzer(800);
-
-    delay(1500);
-
-    digitalWrite(LED_MERAH, LOW);
-}
-
+#include "tampilan.h"
 
 // =====================================================
 // SETUP
@@ -105,46 +13,13 @@ void indikatorGagal()
 void setup()
 {
     Serial.begin(115200);
-
-    delay(1000);
-
+    delay(500);
 
     // =================================================
-    // PIN OUTPUT
+    // INISIALISASI TAMPILAN & INDIKATOR (LCD 16x2)
     // =================================================
 
-    pinMode(LED_HIJAU, OUTPUT);
-    pinMode(LED_MERAH, OUTPUT);
-    pinMode(BUZZER, OUTPUT);
-
-    digitalWrite(LED_HIJAU, LOW);
-    digitalWrite(LED_MERAH, LOW);
-    digitalWrite(BUZZER, LOW);
-
-
-    // =================================================
-    // LCD
-    // =================================================
-
-    Wire.begin(21, 22);
-
-    lcd.init();
-    lcd.backlight();
-
-    lcd.clear();
-
-    lcd.setCursor(0, 0);
-    lcd.print("Sistem Presensi");
-
-    lcd.setCursor(0, 1);
-    lcd.print("Ubudiyah");
-
-    delay(2000);
-
-
-    // =================================================
-    // SERIAL
-    // =================================================
+    initTampilan();
 
     Serial.println();
     Serial.println("====================================");
@@ -153,416 +28,206 @@ void setup()
     Serial.println("       ONLINE - OFFLINE");
     Serial.println("====================================");
 
-
     // =================================================
-    // NVS
+    // PENYIMPANAN NVS
     // =================================================
 
     inisialisasiPenyimpanan();
 
-
     // =================================================
-    // WIFI
+    // KONEKSI WIFI
     // =================================================
 
-    lcd.clear();
-
-    lcd.setCursor(0, 0);
-    lcd.print("Menghubungkan");
-
-    lcd.setCursor(0, 1);
-    lcd.print("WiFi...");
+    tampilkanDuaBaris("Menghubungkan...", "WiFi...");
 
     initWiFi();
 
-
     // =================================================
-    // WAKTU
+    // WAKTU NTP / RTC
     // =================================================
 
     initWaktu();
 
-
     // =================================================
-    // RFID
+    // PEMBACA RFID RC522
     // =================================================
 
     initRFID();
 
-
     // =================================================
-    // SYNC
+    // MODUL SYNC OFFLINE
     // =================================================
 
     initSync();
 
-
     // =================================================
-    // DATA OFFLINE
+    // CEK DATA OFFLINE TERSIMPAN
     // =================================================
 
-    int jumlahOffline =
-        jumlahDataOffline();
+    int jumlahOffline = jumlahDataOffline();
 
     Serial.println();
-
-    Serial.print(
-        "Data offline tersimpan : "
-    );
-
+    Serial.print("Data offline tersimpan: ");
     Serial.println(jumlahOffline);
-
-
-    // =================================================
-    // JIKA ONLINE
-    // =================================================
 
     if (isWiFiConnected())
     {
-        Serial.println();
-        Serial.println(
-            "STATUS SISTEM : ONLINE"
-        );
-
+        Serial.println("STATUS SISTEM : ONLINE");
 
         if (jumlahOffline > 0)
         {
-            Serial.println(
-                "Memulai sinkronisasi..."
-            );
-
+            Serial.println("Memulai sinkronisasi data NVS...");
+            tampilkanSyncStatus(1, jumlahOffline);
             syncOfflineData();
         }
     }
-
-
-    // =================================================
-    // JIKA OFFLINE
-    // =================================================
-
     else
     {
-        Serial.println();
-        Serial.println(
-            "STATUS SISTEM : OFFLINE"
-        );
-
-        Serial.println(
-            "Data baru akan disimpan di NVS."
-        );
+        Serial.println("STATUS SISTEM : OFFLINE");
+        Serial.println("Data scan baru akan disimpan di memori NVS.");
     }
 
-
     // =================================================
-    // SISTEM SIAP
+    // SISTEM SIAP DIGUNAKAN
     // =================================================
 
-    tampilkanAwal();
+    tampilkanStandby(isWiFiConnected(), getLocalIPString());
 
     Serial.println();
-    Serial.println(
-        "===================================="
-    );
-
-    Serial.println(
-        "      SISTEM SIAP DIGUNAKAN"
-    );
-
-    Serial.println(
-        "      TEMPELKAN GELANG RFID"
-    );
-
-    Serial.println(
-        "===================================="
-    );
+    Serial.println("====================================");
+    Serial.println("      SISTEM SIAP DIGUNAKAN");
+    Serial.println("      TEMPELKAN GELANG RFID");
+    Serial.println("====================================");
 }
 
 
 // =====================================================
-// LOOP
+// LOOP UTAMA
 // =====================================================
 
 void loop()
 {
     // =================================================
-    // WEB SERVER PORTAL
+    // PORTAL SETUP WIFI & WEB SERVER
     // =================================================
 
     handlePortalClient();
 
-
     // =================================================
-    // CEK WIFI
+    // CEK DAN REKONEKSI WIFI
     // =================================================
 
     checkWiFi();
 
-
     // =================================================
-    // JIKA WIFI TERHUBUNG
-    // COBA SINKRONISASI DATA OFFLINE
+    // JIKA ONLINE: SINKRONISASI DATA OFFLINE OTOMATIS
     // =================================================
 
-    if (isWiFiConnected())
+    static unsigned long lastSyncCheck = 0;
+    if (isWiFiConnected() && (millis() - lastSyncCheck > 15000))
     {
+        lastSyncCheck = millis();
         if (jumlahDataOffline() > 0)
         {
             syncOfflineData();
         }
     }
 
-
     // =================================================
-    // BACA RFID
+    // BACA UID KARTU / GELANG RFID
     // =================================================
 
     String uid = readRFID();
 
-
-    // =================================================
-    // TIDAK ADA GELANG
-    // =================================================
-
+    // Tidak ada gelang yang menempel
     if (uid == "")
     {
-        delay(100);
+        delay(80);
         return;
     }
-
 
     // =================================================
     // RFID TERBACA
     // =================================================
 
     Serial.println();
-    Serial.println(
-        "===================================="
-    );
-
-    Serial.println(
-        "       GELANG RFID TERBACA"
-    );
-
-    Serial.print(
-        "UID : "
-    );
-
+    Serial.println("====================================");
+    Serial.println("       GELANG RFID TERBACA");
+    Serial.print  ("UID : ");
     Serial.println(uid);
+    Serial.println("====================================");
 
-    Serial.println(
-        "===================================="
-    );
-
-
-    // =================================================
-    // TAMPILKAN MEMPROSES
-    // =================================================
-
-    lcd.clear();
-
-    lcd.setCursor(0, 0);
-    lcd.print("Memproses...");
-
-    lcd.setCursor(0, 1);
-    lcd.print("Mohon Tunggu");
-
+    // Tampilkan pesan membaca sejenak (feedback visual & audio klik)
+    tampilkanMembaca();
 
     // =================================================
-    // MODE ONLINE
+    // SKENARIO A: MODE ONLINE (WIFI TERHUBUNG)
     // =================================================
 
     if (isWiFiConnected())
     {
-        Serial.println(
-            "MODE : ONLINE"
-        );
+        Serial.println("MODE : ONLINE - Mengirim ke Laravel...");
 
-        Serial.println(
-            "Mengirim ke Laravel..."
-        );
+        HasilAbsensi hasil = kirimAbsensiKeLaravel(uid);
 
-
-        // ---------------------------------------------
-        // Kirim UID ke Laravel
-        // ---------------------------------------------
-
-        HasilAbsensi hasil =
-            kirimAbsensiKeLaravel(uid);
-
-
-        // =============================================
-        // ABSENSI BERHASIL
-        // =============================================
-
-        if (hasil.berhasil)
+        // Kasus Khusus: Jika server Laravel tidak merespon (Down / Timeout),
+        // amankan data presensi santri ke NVS agar tidak hilang!
+        if (hasil.message == "Server tidak terhubung" || hasil.message == "Response server tidak valid")
         {
-            Serial.println(
-                "[OK] Absensi berhasil."
-            );
+            Serial.println("Peringatan: Server tidak merespon. Menyimpan ke NVS...");
 
-            Serial.println(
-                "Nama      : " + hasil.nama
-            );
+            String tanggal = getTanggal();
+            String jam     = getJam();
 
-            Serial.println(
-                "Kegiatan  : " + hasil.kegiatan
-            );
+            simpanDataOffline(uid, tanggal, jam);
 
-            Serial.println(
-                "Status    : " + hasil.status
-            );
-
-            Serial.println(
-                "Jam       : " + hasil.jam
-            );
-
-
-            // -----------------------------------------
-            // LCD
-            // -----------------------------------------
-
-            lcd.clear();
-
-            lcd.setCursor(0, 0);
-
-            lcd.print(
-                hasil.nama.substring(0, 16)
-            );
-
-            lcd.setCursor(0, 1);
-
-            lcd.print(
-                hasil.status.substring(0, 16)
-            );
-
-
-            // -----------------------------------------
-            // LED HIJAU + BUZZER
-            // -----------------------------------------
-
-            indikatorBerhasil();
-
-            delay(2000);
+            tampilkanServerOfflineFallback(jam);
         }
-
-
-        // =============================================
-        // ABSENSI DITOLAK
-        // =============================================
-
         else
         {
-            Serial.println(
-                "[GAGAL] Absensi ditolak."
+            // Tampilkan hasil absensi sesuai kondisi (Hadir / Terlambat / Keluar / Ditolak)
+            // Mendukung teks berjalan (marquee) jika nama atau pesan > 16 karakter
+            tampilkanHasilAbsensi(
+                hasil.berhasil,
+                hasil.nama,
+                hasil.status,
+                hasil.kegiatan,
+                hasil.action,
+                hasil.message
             );
-
-            Serial.println(
-                "Pesan : " + hasil.message
-            );
-
-
-            lcd.clear();
-
-            lcd.setCursor(0, 0);
-            lcd.print("Absensi Gagal");
-
-            lcd.setCursor(0, 1);
-
-            lcd.print(
-                hasil.message.substring(0, 16)
-            );
-
-
-            indikatorGagal();
-
-            delay(2000);
         }
     }
 
-
     // =================================================
-    // MODE OFFLINE
+    // SKENARIO B: MODE OFFLINE (TIDAK ADA WIFI)
     // =================================================
 
     else
     {
-        Serial.println(
-            "MODE : OFFLINE"
-        );
+        Serial.println("MODE : OFFLINE - Menyimpan ke NVS...");
 
-        Serial.println(
-            "Menyimpan ke NVS..."
-        );
+        String tanggal = getTanggal();
+        String jam     = getJam();
 
-
-        // ---------------------------------------------
-        // AMBIL TANGGAL DAN JAM SAAT SCAN
-        // ---------------------------------------------
-
-        String tanggal =
-            getTanggal();
-
-        String jam =
-            getJam();
-
-
-        Serial.print(
-            "Tanggal : "
-        );
-
+        Serial.print("Tanggal : ");
         Serial.println(tanggal);
-
-        Serial.print(
-            "Jam     : "
-        );
-
+        Serial.print("Jam     : ");
         Serial.println(jam);
 
+        simpanDataOffline(uid, tanggal, jam);
 
-        // ---------------------------------------------
-        // SIMPAN UID + TANGGAL + JAM
-        // ---------------------------------------------
+        int totalOffline = jumlahDataOffline();
 
-        simpanDataOffline(
-            uid,
-            tanggal,
-            jam
-        );
-
-
-        // ---------------------------------------------
-        // LCD
-        // ---------------------------------------------
-
-        lcd.clear();
-
-        lcd.setCursor(0, 0);
-        lcd.print("Tersimpan Offline");
-
-        lcd.setCursor(0, 1);
-        lcd.print("Data Aman");
-
-
-        // ---------------------------------------------
-        // INDIKATOR
-        // ---------------------------------------------
-
-        indikatorBerhasil();
-
-        delay(2000);
+        // Tampilkan notifikasi offline dengan rapi di LCD
+        tampilkanOfflineTersimpan(jam, totalOffline);
     }
 
-
     // =================================================
-    // KEMBALI KE TAMPILAN AWAL
-    // =================================================
-
-    tampilkanAwal();
-
-
-    // =================================================
-    // TUNGGU
+    // KEMBALI KE TAMPILAN STANDBY
     // =================================================
 
-    delay(1000);
+    tampilkanStandby(isWiFiConnected(), getLocalIPString());
+
+    // Jeda sejenak sebelum pembacaan berikutnya
+    delay(500);
 }
