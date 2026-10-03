@@ -39,7 +39,7 @@ HasilAbsensi kirimAbsensiKeLaravel(String uid);
 // tanggal = tanggal saat scan offline
 // jam     = jam saat scan offline
 
-bool kirimDataOfflineKeLaravel(`
+bool kirimDataOfflineKeLaravel(
     String uid,
     String tanggal,
     String jam

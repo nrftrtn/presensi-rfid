@@ -37,7 +37,14 @@ void tampilkanAwal()
     lcd.print("Tempel Gelang");
 
     lcd.setCursor(0, 1);
-    lcd.print("RFID...");
+    if (isWiFiConnected())
+    {
+        lcd.print(getLocalIPString());
+    }
+    else
+    {
+        lcd.print("RFID (OFFLINE)");
+    }
 }
 
 
@@ -277,6 +284,13 @@ void setup()
 
 void loop()
 {
+    // =================================================
+    // WEB SERVER PORTAL
+    // =================================================
+
+    handlePortalClient();
+
+
     // =================================================
     // CEK WIFI
     // =================================================

@@ -1,20 +1,11 @@
 #include "laravel.h"
 
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-#include "wifi.h"
-
-// =====================================================
-// ALAMAT SERVER LARAVEL
-// =====================================================
-
-const char* SERVER_URL =
-    "http://10.35.222.194:8000/api/rfid/scan";
-
-const char* SERVER_SYNC_URL =
-    "http://10.35.222.194:8000/api/rfid/scan";
+#include "wifi_module.h"
 
 
 // =====================================================
@@ -54,8 +45,10 @@ HasilAbsensi kirimAbsensiKeLaravel(String uid)
     Serial.print("UID : ");
     Serial.println(uid);
 
+    String serverUrl = getSavedServerUrl();
+
     Serial.print("URL : ");
-    Serial.println(SERVER_URL);
+    Serial.println(serverUrl);
 
     // =================================================
     // DEBUG WIFI
@@ -90,8 +83,15 @@ HasilAbsensi kirimAbsensiKeLaravel(String uid)
     // =================================================
 
     HTTPClient http;
+    WiFiClient client;
+    WiFiClientSecure secureClient;
 
-    http.begin(SERVER_URL);
+    if (serverUrl.startsWith("https://")) {
+        secureClient.setInsecure();
+        http.begin(secureClient, serverUrl);
+    } else {
+        http.begin(client, serverUrl);
+    }
 
     http.addHeader(
         "Content-Type",
@@ -283,16 +283,25 @@ bool kirimDataOfflineKeLaravel(
     Serial.print("Jam     : ");
     Serial.println(jam);
 
+    String serverSyncUrl = getSavedServerSyncUrl();
+
     Serial.print("URL     : ");
-    Serial.println(SERVER_SYNC_URL);
+    Serial.println(serverSyncUrl);
 
     // =================================================
     // HTTP
     // =================================================
 
     HTTPClient http;
+    WiFiClient client;
+    WiFiClientSecure secureClient;
 
-    http.begin(SERVER_SYNC_URL);
+    if (serverSyncUrl.startsWith("https://")) {
+        secureClient.setInsecure();
+        http.begin(secureClient, serverSyncUrl);
+    } else {
+        http.begin(client, serverSyncUrl);
+    }
 
     http.addHeader(
         "Content-Type",
