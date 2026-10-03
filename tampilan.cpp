@@ -1,4 +1,6 @@
 #include "tampilan.h"
+#include "waktu.h"
+#include "wifi_module.h"
 #include <Wire.h>
 
 // =====================================================
@@ -196,24 +198,33 @@ void buzzerGagal()
 // IMPLEMENTASI KONDISI-KONDISI TAMPILAN
 // =====================================================
 
-// Kondisi 1: Standby
-void tampilkanStandby(bool wifiOnline, String infoTambahan)
+// Kondisi 1: Standby dengan Jam Digital Realtime
+void perbaruiJamStandby()
 {
-    String baris0 = "Tempelkan Gelang";
+    String jam = getJam();
     String baris1 = "";
 
-    if (wifiOnline) {
-        if (infoTambahan.length() > 0) {
-            // Tampilkan IP lokal
-            baris1 = infoTambahan;
-        } else {
-            baris1 = "[ONLINE]";
-        }
+    if (jam != "00:00:00" && jam != "") {
+        // Tepat 16 karakter: "  HH:MM:SS WIB  "
+        baris1 = "  " + jam + " WIB  ";
+    } else if (isWiFiConnected()) {
+        baris1 = "  Sinkron Jam...";
     } else {
         baris1 = "*MODE OFFLINE*  ";
     }
 
-    tampilkanDuaBaris(baris0, baris1);
+    tampilkanBaris(1, baris1);
+}
+
+void tampilkanStandbyAwal()
+{
+    tampilkanBaris(0, "Tempelkan Gelang");
+    perbaruiJamStandby();
+}
+
+void tampilkanStandby(bool wifiOnline, String infoTambahan)
+{
+    tampilkanStandbyAwal();
 }
 
 // Kondisi 2: Gelang Terdeteksi

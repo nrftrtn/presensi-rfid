@@ -66,7 +66,9 @@ void buzzerGagal();
 // KONDISI-KONDISI TAMPILAN SISTEM PRESENSI
 // =====================================================
 
-// Kondisi 1: Layar Standby / Awal
+// Kondisi 1: Layar Standby / Awal (Jam Digital Realtime)
+void tampilkanStandbyAwal();
+void perbaruiJamStandby();
 void tampilkanStandby(bool wifiOnline, String infoTambahan = "");
 
 // Kondisi 2: Gelang Ditempelkan (Membaca UID)

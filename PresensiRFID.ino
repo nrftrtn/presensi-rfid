@@ -74,6 +74,10 @@ void setup()
     {
         Serial.println("STATUS SISTEM : ONLINE");
 
+        // Tampilkan IP lokal selama 2.5 detik saat pertama kali nyala
+        tampilkanDuaBaris("WiFi Terhubung!", "IP: " + getLocalIPString());
+        delay(2500);
+
         if (jumlahOffline > 0)
         {
             Serial.println("Memulai sinkronisasi data NVS...");
@@ -88,10 +92,10 @@ void setup()
     }
 
     // =================================================
-    // SISTEM SIAP DIGUNAKAN
+    // SISTEM SIAP DIGUNAKAN (JAM REALTIME)
     // =================================================
 
-    tampilkanStandby(isWiFiConnected(), getLocalIPString());
+    tampilkanStandbyAwal();
 
     Serial.println();
     Serial.println("====================================");
@@ -131,6 +135,17 @@ void loop()
         {
             syncOfflineData();
         }
+    }
+
+    // =================================================
+    // UPDATE JAM REALTIME STANDBY SETIAP 1 DETIK
+    // =================================================
+
+    static unsigned long lastClockUpdate = 0;
+    if (millis() - lastClockUpdate >= 1000)
+    {
+        lastClockUpdate = millis();
+        perbaruiJamStandby();
     }
 
     // =================================================
@@ -223,10 +238,10 @@ void loop()
     }
 
     // =================================================
-    // KEMBALI KE TAMPILAN STANDBY
+    // KEMBALI KE TAMPILAN STANDBY (JAM REALTIME)
     // =================================================
 
-    tampilkanStandby(isWiFiConnected(), getLocalIPString());
+    tampilkanStandbyAwal();
 
     // Jeda sejenak sebelum pembacaan berikutnya
     delay(500);
